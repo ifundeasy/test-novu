@@ -1,0 +1,65 @@
+name: "novu-party"
+services:
+  redis:
+    image: redis:latest
+    container_name: novu-redis
+    hostname: novu-redis
+    networks:
+      network-novu-redis:
+        aliases:
+          - novu-redis
+    volumes:
+      - data-novu-redis:/data
+    ports:
+      - "6379:6379"
+    deploy:
+      restart_policy:
+          condition: unless-stopped
+    command: redis-server --appendonly yes --requirepass "mypswd123" --maxmemory-policy noeviction
+
+  mongodb:
+    image: mongo
+    container_name: novu-mongodb
+    hostname: novu-mongodb
+    networks:
+      - network-novu-mongodb
+    volumes:
+      - data-novu-mongodb:/data/db
+    ports:
+      - "27017:27017"
+    restart: "unless-stopped"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: default
+      MONGO_INITDB_ROOT_PASSWORD: mypswd123
+
+  localstack:
+    container_name: novu-localstack
+    image: 'localstack/localstack:latest'
+    hostname: novu-localstack
+    networks:
+      - network-novu-localstack
+    environment:
+      - SERVICES=s3
+    ports:
+      - '4566:4566'
+      # - '4510-4559:4510-4559'
+    volumes:
+      - data-novu-localstack:/tmp/localstack'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    healthcheck:
+      test: "bash -c 'AWS_ACCESS_KEY_ID=default AWS_SECRET_ACCESS_KEY=mypswd123 aws --endpoint-url=http://127.0.0.1:4566 s3 ls'"
+      retries: 5
+      interval: 10s
+
+volumes:
+  data-novu-localstack:
+  data-novu-redis:
+  data-novu-mongodb:
+
+networks:
+  network-novu-redis:
+    driver: bridge
+  network-novu-mongodb:
+    driver: bridge
+  network-novu-localstack:
+    driver: bridge
